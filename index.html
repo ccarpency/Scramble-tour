@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Scramble Tour Prototype</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,sans-serif;background:#f3f6f1;color:#172018}
+.app{max-width:520px;margin:auto;min-height:100vh;background:white;box-shadow:0 0 30px #0001}
+header{background:#173d25;color:white;padding:22px 20px}.brand{font-size:25px;font-weight:800}.money{float:right;color:#d9f28a;font-weight:700}
+main{padding:18px}.screen{display:none}.screen.active{display:block}
+.card{background:#f7f9f6;border:1px solid #dce5da;border-radius:16px;padding:16px;margin:12px 0}
+h2{margin:4px 0 14px}h3{margin:0 0 8px}
+button{width:100%;border:0;border-radius:12px;padding:14px;margin:6px 0;font-size:16px;font-weight:750;cursor:pointer;background:#245c35;color:white}
+button.secondary{background:#e8efe7;color:#21462b}button:disabled{opacity:.45}
+.nav{position:sticky;bottom:0;background:white;border-top:1px solid #ddd;display:grid;grid-template-columns:repeat(4,1fr);padding:8px}
+.nav button{margin:0 3px;padding:10px 4px;font-size:12px;background:#edf3eb;color:#244a2d}.nav button.active{background:#245c35;color:white}
+.stat{display:flex;justify-content:space-between;margin:7px 0}.bar{height:8px;background:#dce5da;border-radius:8px;overflow:hidden}.fill{height:100%;background:#3d8b4d}
+.golfer{background:white;border:1px solid #dce5da;border-radius:14px;padding:13px;margin:9px 0}
+.choice{background:#fff;border:2px solid #dce5da;color:#173d25;text-align:left}.choice:hover{border-color:#3d8b4d}
+.score{font-size:48px;font-weight:850;text-align:center}.center{text-align:center}
+.log{background:#172018;color:#e9f5e8;border-radius:12px;padding:12px;font-family:monospace;font-size:13px;min-height:90px}
+.badge{display:inline-block;background:#dff0d8;color:#245c35;border-radius:20px;padding:5px 9px;font-size:12px;font-weight:700}
+</style>
+</head>
+<body>
+<div class="app">
+<header><span class="brand">⛳ Scramble Tour</span><span class="money" id="money">$1,000</span></header>
+<main>
+<section id="home" class="screen active">
+<h2>Welcome to the Tour</h2>
+<div class="card center"><div class="badge">ROOKIE TOUR</div><h2 id="homeStatus">Ready to play</h2><p>Build your four-player scramble team and chase the top of the leaderboard.</p></div>
+<button onclick="show('tournament')">PLAY TOURNAMENT</button>
+<button class="secondary" onclick="show('team')">MANAGE TEAM</button>
+<div class="card"><h3>Tour Progress</h3><div class="stat"><span>Rookie Tour</span><b>1 / 3</b></div><div class="bar"><div class="fill" style="width:33%"></div></div></div>
+</section>
+
+<section id="team" class="screen"><h2>Your Team</h2><div id="teamList"></div><button class="secondary" onclick="recruit()">RECRUIT A GOLFER — $800</button></section>
+
+<section id="tournament" class="screen">
+<h2>Rookie Open</h2>
+<div class="card"><div class="stat"><span>Entry Fee</span><b>$0</b></div><div class="stat"><span>Prize</span><b>$500</b></div><div class="stat"><span>Course</span><b>Pine Valley Club</b></div></div>
+<button onclick="startRound()">START 18 HOLES</button>
+</section>
+
+<section id="hole" class="screen">
+<div class="stat"><span id="holeNo">Hole 1 • Par 4</span><b id="roundScore">E</b></div>
+<div class="card center"><div class="badge" id="phase">TEE SHOT</div><h2 id="holeTitle">Hole 1</h2><p id="holeDesc">Choose your strategy.</p></div>
+<div id="choices"></div>
+<div class="card"><h3>Round Log</h3><div class="log" id="log"></div></div>
+</section>
+
+<section id="results" class="screen">
+<h2>Round Complete</h2><div class="card center"><div class="badge">FINAL SCORE</div><div class="score" id="finalScore">-</div><p id="resultText"></p></div>
+<div class="card"><div class="stat"><span>Prize Money</span><b id="prize">$0</b></div><div class="stat"><span>Team XP</span><b id="xp">+0</b></div></div>
+<button onclick="show('tournament')">PLAY AGAIN</button>
+<button class="secondary" onclick="show('team')">VIEW TEAM</button>
+</section>
+</main>
+<div class="nav">
+<button onclick="show('home')" id="navhome" class="active">Home</button>
+<button onclick="show('team')" id="navteam">Team</button>
+<button onclick="show('tournament')" id="navtournament">Tour</button>
+<button onclick="show('home')">Shop</button>
+</div>
+</div>
+<script>
+const team=[
+{name:"Jake",drive:72,iron:68,putt:64,short:67,acc:70},
+{name:"Mike",drive:65,iron:76,putt:72,short:70,acc:78},
+{name:"Ryan",drive:78,iron:62,putt:69,short:63,acc:65},
+{name:"Chris",drive:68,iron:70,putt:80,short:75,acc:76}
+];
+let money=1000,hole=1,total=0,phase=0,holes=[],xp=0;
+function show(id){
+ document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));
+ document.getElementById(id).classList.add('active');
+ document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));
+ const n=document.getElementById('nav'+id);if(n)n.classList.add('active');
+ if(id==='team')renderTeam(); document.getElementById('money').textContent='$'+money.toLocaleString();
+}
+function renderTeam(){
+ const labels=[['drive','Driving'],['iron','Iron'],['putt','Putting'],['short','Short Game'],['acc','Accuracy']];
+ document.getElementById('teamList').innerHTML=team.map(g=>`<div class="golfer"><h3>${g.name} <span class="badge">OVR ${Math.round((g.drive+g.iron+g.putt+g.short+g.acc)/5)}</span></h3>${labels.map(([k,l])=>`<div class="stat"><span>${l}</span><b>${g[k]}</b></div><div class="bar"><div class="fill" style="width:${g[k]}%"></div></div>`).join('')}</div>`).join('');
+}
+function recruit(){
+ if(money<800)return alert('You need $800 to recruit a golfer.');
+ money-=800; team.push({name:'Alex',drive:76,iron:74,putt:71,short:69,acc:73});
+ alert('Alex joined your team!');renderTeam();document.getElementById('money').textContent='$'+money.toLocaleString();
+}
+function startRound(){
+ hole=1;total=0;phase=0;xp=0;holes=[];show('hole');setupHole();
+}
+function setupHole(){
+ phase=0;
+ const par=hole===18?5:(hole%3===0?5:4);
+ document.getElementById('holeNo').textContent=`Hole ${hole} • Par ${par}`;
+ document.getElementById('roundScore').textContent=scoreName(total);
+ document.getElementById('phase').textContent='TEE SHOT';
+ document.getElementById('holeTitle').textContent=`Hole ${hole}`;
+ document.getElementById('holeDesc').textContent='Pick a strategy for your team.';
+ document.getElementById('choices').innerHTML=`
+ <button class="choice" onclick="playShot('safe')">🟢 SAFE<br><small>More accuracy • less distance</small></button>
+ <button class="choice" onclick="playShot('normal')">🟡 NORMAL<br><small>Balanced risk and reward</small></button>
+ <button class="choice" onclick="playShot('aggressive')">🔴 AGGRESSIVE<br><small>More distance • more risk</small></button>`;
+}
+function playShot(strategy){
+ const avg=k=>team.reduce((a,g)=>a+g[k],0)/team.length;
+ let base=avg(phase===0?'drive':phase===1?'iron':phase===2?'short':'putt');
+ let bonus=strategy==='safe'?(team.reduce((a,g)=>a+g.acc,0)/team.length)*.15:strategy==='aggressive'?8:3;
+ let roll=(Math.random()*18)-9;
+ let result=Math.max(1,Math.round(base+bonus+roll));
+ let good=result>=74;
+ if(phase===0){
+  document.getElementById('log').textContent=`Best drive: ${245+Math.round(result*0.65)} yards — ${good?'great position':'the team has a tougher approach'}.`;
+  phase=1; nextChoice('APPROACH','Choose how aggressively to attack the green.');
+ } else if(phase===1){
+  document.getElementById('log').textContent+=`\nApproach result: ${good?'on the green':'just off the green'}.`;
+  phase=2; nextChoice('SHORT GAME','Pick the safest way to get close.');
+ } else if(phase===2){
+  document.getElementById('log').textContent+=`\nBest recovery: ${good?'inside 12 feet':'inside 25 feet'}.`;
+  phase=3; nextChoice('PUTT','Make the birdie/par putt.');
+ } else {
+  let putt=good? (Math.random()<.35? -2:-1) : (Math.random()<.55?0:1);
+  total+=putt; xp+=10;
+  document.getElementById('log').textContent+=`\nPutt: ${putt===-2?'EAGLE!':putt===-1?'BIRDIE!':putt===0?'PAR':'BOGEY'}`;
+  setTimeout(()=>{hole++; if(hole>18)finish();else setupHole()},450);
+ }
+}
+function nextChoice(label,desc){
+ document.getElementById('phase').textContent=label;
+ document.getElementById('holeDesc').textContent=desc;
+ document.getElementById('choices').innerHTML=`
+ <button class="choice" onclick="playShot('safe')">🟢 SAFE<br><small>Higher consistency</small></button>
+ <button class="choice" onclick="playShot('normal')">🟡 ATTACK<br><small>Balanced option</small></button>
+ <button class="choice" onclick="playShot('aggressive')">🔴 GO FOR IT<br><small>Higher upside and risk</small></button>`;
+}
+function scoreName(s){return s===0?'E':(s>0?'+':'')+s}
+function finish(){
+ let prize=total<=2?500:total<=8?350:200;
+ money+=prize; document.getElementById('finalScore').textContent=scoreName(total);
+ document.getElementById('prize').textContent='$'+prize;
+ document.getElementById('xp').textContent='+'+xp;
+ document.getElementById('resultText').textContent=total<=-5?'Outstanding round!':total<=0?'Great round — the team is moving up.':'Good experience. Keep developing the team.';
+ document.getElementById('homeStatus').textContent=`Last round: ${scoreName(total)}`;
+ show('results');
+}
+renderTeam();
+</script>
+</body>
+</html>
